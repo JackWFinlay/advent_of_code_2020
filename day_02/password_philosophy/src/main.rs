@@ -102,7 +102,7 @@ fn parse_policy(policy_str: &str) -> Policy {
     let letter = split[1].as_bytes()[0];
 
     let range = range.split("-")
-                              .collect::<Vec<&str>>();
+                     .collect::<Vec<&str>>();
 
     let lower = range[0].trim()
                         .parse()
