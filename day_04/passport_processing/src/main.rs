@@ -1,7 +1,9 @@
-mod input;
+use std::str;
 
 fn main() {
-    let text = input::get_input();
+    
+    let text = include_str!("input.txt");
+
     let compulsory_fields = vec!("byr",
                                           "iyr",
                                           "eyr",
@@ -17,9 +19,10 @@ fn main() {
 }
 
 fn check_passports(text: &str, compulsory_fields: &Vec<&str>) -> (u32, u32) {
+    
     let mut present_count: u32 = 0;
     let mut valid_count: u32 = 0;
-    let split = split_text(text, "\n\n");
+    let split = text.split("\n\n");//split_text(text, "\n\n");
 
     for passport in split {
         if check_passport_fields_present(passport, compulsory_fields) {
@@ -31,13 +34,6 @@ fn check_passports(text: &str, compulsory_fields: &Vec<&str>) -> (u32, u32) {
     }
 
     return (present_count, valid_count);
-}
-
-fn split_text<'a>(text: &'a str, split_text: &str) -> Vec<&'a str> {
-    let split = text.split(split_text)
-        .collect::<Vec<&str>>();
-    
-    return split;
 }
 
 fn check_passport_fields_present(passport: &str, compulsory_fields: &Vec<&str>) -> bool {
@@ -52,7 +48,8 @@ fn check_passport_fields_present(passport: &str, compulsory_fields: &Vec<&str>) 
 }
 
 fn check_passport_valid(passport: &str) -> bool {
-    let split = split_text(passport, " ");
+    
+    let split = passport.split(|c| c == ' ' || c == '\n');
 
     for field in split {
         if !check_field(field.trim()) {
@@ -65,7 +62,8 @@ fn check_passport_valid(passport: &str) -> bool {
 
 fn check_field(field: &str) -> bool {
 
-    let field_split = split_text(field, ":");
+    let field_split = field.split(":")
+                        .collect::<Vec<&str>>();
 
     let field_name = field_split[0].trim();
     let field_val = field_split[1].trim();
@@ -78,6 +76,7 @@ fn check_field(field: &str) -> bool {
         "hcl" => validate_hcl(field_val),
         "ecl" => validate_ecl(field_val),
         "pid" => validate_pid(field_val),
+        "cid" => true,
         _ => false
     };
 
@@ -85,39 +84,118 @@ fn check_field(field: &str) -> bool {
 }
 
 fn validate_pid(field_val: &str) -> bool {
-    todo!()
+    
+    if field_val.len() != 9 {
+        return false;
+    }
+
+    return match field_val.parse::<u32>() {
+        Ok(_) => true,
+        Err(_) => false
+    };
 }
 
 fn validate_ecl(field_val: &str) -> bool {
-    todo!()
+    
+    if field_val.len() != 3 {
+        return false;
+    }
+
+    let valid_options = &vec!("amb", "blu", "brn", "gry", "grn", "hzl", "oth");
+
+    return is_in_set(field_val, valid_options);
 }
 
 fn validate_hcl(field_val: &str) -> bool {
-    todo!()
+    
+    if field_val.len() != 7 {
+        return false;
+    }
+
+    if !field_val.starts_with("#") {
+        return false;
+    }
+
+    let valid_options = &vec!("0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
+                                      "a", "b", "c", "d", "e","f");
+
+    let hexcode = &field_val[1..];
+
+    // trying to do this without importing the hex crate.
+    for digit in hexcode.bytes() {
+        let digit_arr = &[digit];
+        let digit_str = match str::from_utf8(digit_arr) {
+            Ok(x) => x,
+            Err(_) => return false
+        };
+
+        if !is_in_set(&digit_str, valid_options) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+fn is_in_set(val: &str, valid_options: &Vec<&str>) -> bool {
+
+    let mut valid = false;
+
+    for check_val in valid_options {
+        if *check_val == val {
+            valid = true;
+            break;
+        }
+    }
+    
+    return valid;
 }
 
 fn validate_hgt(field_val: &str) -> bool {
-    todo!()
+    
+    let height_str = &field_val[..(field_val.len() - 2)];
+    let height = match height_str.parse() {
+        Ok(x) => x,
+        Err(_) => return false
+    };
+    
+    let unit = &field_val[(field_val.len() - 2)..];
+
+    let (lower, upper) = match unit {
+        "cm" => (150, 193),
+        "in" => (59, 76),
+        _ => return false
+    };
+
+    return is_in_range(height, lower, upper);
 }
 
 fn validate_eyr(field_val: &str) -> bool {
-    todo!()
+    return validate_years(field_val, 2020, 2030);
 }
 
 fn validate_iyr(field_val: &str) -> bool {
-    todo!()
+    return validate_years(field_val, 2010, 2020);
 }
 
 fn validate_byr(field_val: &str) -> bool {
-    if field_val.len() != 4 {
+    return validate_years(field_val, 1920, 2002);
+}
+
+fn validate_years(val: &str, lower: u32, upper: u32) -> bool {
+    
+    if val.len() != 4 {
         return false;
     };
 
-    let field_val_as_u32: u32 = match field_val.parse() {
+    let val_as_u32: u32 = match val.parse() {
         Ok(x) => x,
-        Err(e) => return false
+        Err(_) => return false
     };
 
+    return is_in_range(val_as_u32,lower, upper);
+}
 
-    return field_val_as_u32 >= 1920 && field_val_as_u32 <= 2002;
+fn is_in_range(val: u32, lower: u32, upper: u32) -> bool {
+    return val >= lower && val <= upper;
 }
